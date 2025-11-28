@@ -1,21 +1,29 @@
-export const contractAddress = "0xda3638C5dfa481DB0851da92358bfDb648037911";
+export const contractAddress = "YOUR_DEPLOYED_ADDRESS"
 
-// Export only the ABI array expected by viem/wagmi
 export const contractABI = [
   {
     "inputs": [],
-    "name": "getLotSize",
+    "name": "start",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "noteHash", "type": "bytes32" }
+    ],
+    "name": "stop",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "user", "type": "address" }
+    ],
+    "name": "isRunning",
     "outputs": [
-      {
-        "internalType": "uint64",
-        "name": "lotSizeAMG",
-        "type": "uint64"
-      },
-      {
-        "internalType": "uint8",
-        "name": "assetDecimals",
-        "type": "uint8"
-      }
+      { "internalType": "bool", "name": "", "type": "bool" }
     ],
     "stateMutability": "view",
     "type": "function"

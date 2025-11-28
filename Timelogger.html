@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Simple TimeLogger — Pretty</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg: #f6f9fc;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --accent: linear-gradient(90deg,#7c3aed,#06b6d4);
+      --glass: rgba(255,255,255,0.7);
+      --success: #10b981;
+      --danger: #ef4444;
+      --radius: 14px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color-scheme: light;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background: radial-gradient(800px 400px at 10% 10%, rgba(99,102,241,0.08), transparent),
+                  radial-gradient(700px 300px at 90% 90%, rgba(6,182,212,0.06), transparent),
+                  var(--bg);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:28px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+    }
+
+    .app {
+      width:100%;
+      max-width:900px;
+      display:grid;
+      grid-template-columns: 1fr 360px;
+      gap:20px;
+      align-items:start;
+    }
+
+    /* Left column (main) */
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,255,255,0.85));
+      border-radius: var(--radius);
+      padding:20px;
+      box-shadow: 0 8px 30px rgba(15,23,42,0.06);
+      border: 1px solid rgba(15,23,42,0.03);
+    }
+
+    header.app-header{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+      margin-bottom:12px;
+    }
+    header.app-header h1{
+      font-size:20px;
+      margin:0;
+      letter-spacing:-0.2px;
+    }
+    header.app-header .sub { color:var(--muted); font-size:13px }
+
+    .controls{
+      display:flex;
+      gap:10px;
+      margin-bottom:16px;
+      align-items:center;
+    }
+    .controls input{
+      flex:1;
+      padding:12px 14px;
+      border-radius:10px;
+      border:1px solid rgba(15,23,42,0.06);
+      font-size:14px;
+      outline:none;
+      background:transparent;
+      box-shadow: inset 0 -1px 0 rgba(0,0,0,0.02);
+    }
+    .controls input:focus{ box-shadow: 0 6px 18px rgba(99,102,241,0.06); border-color: rgba(99,102,241,0.6) }
+
+    .btn {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 14px;
+      border-radius:10px;
+      border: none;
+      cursor:pointer;
+      font-weight:600;
+      font-size:13px;
+    }
+    .btn:disabled{ opacity:0.55; cursor:not-allowed }
+    .btn-ghost{
+      background:transparent;
+      border:1px solid rgba(15,23,42,0.06);
+    }
+    .btn-start{
+      background: linear-gradient(90deg,#34d399,#10b981);
+      color:white; box-shadow: 0 6px 18px rgba(16,185,129,0.12);
+    }
+    .btn-stop{
+      background: linear-gradient(90deg,#fb7185,#ef4444);
+      color:white; box-shadow: 0 6px 18px rgba(239,68,68,0.12);
+    }
+    .btn-export{
+      background:transparent;
+      border:1px dashed rgba(99,102,241,0.14);
+      color: #374151;
+    }
+
+    /* Active card */
+    .active-card{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      padding:14px;
+      border-radius:12px;
+      background: linear-gradient(90deg, rgba(124,58,237,0.06), rgba(6,182,212,0.03));
+      margin-bottom:14px;
+      border:1px solid rgba(124,58,237,0.06);
+    }
+    .active-left{ display:flex; gap:12px; align-items:center }
+    .task-badge{
+      background: linear-gradient(90deg,#e9d5ff,#cffafe);
+      padding:8px 10px;
+      border-radius:10px;
+      font-weight:700;
+      font-size:14px;
+    }
+    .meta { color:var(--muted); font-size:13px }
+
+    /* Entries table */
+    .entries {
+      margin-top:6px;
+    }
+    .entry {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      padding:12px;
+      border-radius:12px;
+      background:var(--card);
+      border:1px solid rgba(15,23,42,0.02);
+      margin-bottom:10px;
+      transition:transform .12s ease, box-shadow .12s ease;
+    }
+    .entry:hover{ transform: translateY(-4px); box-shadow:0 10px 30px rgba(2,6,23,0.06) }
+    .entry .left{flex:1}
+    .entry .taskname{ font-weight:700; margin-bottom:6px; }
+    .entry .times { color:var(--muted); font-size:13px; display:flex; gap:8px; flex-wrap:wrap; }
+    .entry .dur { font-weight:700; font-size:13px; color:#111827; min-width:90px; text-align:right }
+    .entry .actions { display:flex; gap:8px; margin-left:6px }
+
+    .small-muted{ color:var(--muted); font-size:13px }
+
+    /* Right column (summary) */
+    .side {
+      position:sticky;
+      top:28px;
+      height:fit-content;
+    }
+    .stats-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px }
+    .stat {
+      background:linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.8));
+      border-radius:12px;
+      padding:12px;
+      text-align:center;
+      border:1px solid rgba(15,23,42,0.03);
+    }
+    .stat .v{ font-weight:800; font-size:16px }
+    .stat .label{ color:var(--muted); font-size:13px }
+
+    .quiet { color:var(--muted); font-size:13px; margin-top:8px }
+
+    /* tiny icon */
+    .icon{ width:16px;height:16px; display:inline-block; vertical-align:middle }
+
+    /* responsive */
+    @media (max-width:880px){
+      .app { grid-template-columns: 1fr; padding:0 6px }
+      .side { position:relative; top:auto }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Simple TimeLogger">
+    <div class="panel" aria-hidden="false">
+      <header class="app-header">
+        <div>
+          <h1>Simple TimeLogger</h1>
+          <div class="sub">Start a task, stop when you're done — everything stays in your browser.</div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center">
+          <button id="exportBtn" class="btn btn-export" title="Export CSV">
+            <!-- small download svg -->
+            <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M12 3v12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 21H3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Export
+          </button>
+        </div>
+      </header>
+
+      <div class="controls" role="region" aria-label="Controls">
+        <input id="taskInput" placeholder="Task name (e.g. Study React)" aria-label="Task name" />
+        <button id="startBtn" class="btn btn-start" title="Start task">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden><path d="M5 3v18l15-9L5 3z" fill="white"></path></svg>
+          Start
+        </button>
+        <button id="stopBtn" class="btn btn-stop" disabled title="Stop active task">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden><rect x="6" y="6" width="12" height="12" rx="2" fill="white"></rect></svg>
+          Stop
+        </button>
+      </div>
+
+      <div id="activeArea" class="active-card" aria-live="polite">
+        <div class="active-left">
+          <div class="task-badge">No active task</div>
+          <div>
+            <div class="meta">Start a task to begin</div>
+            <div class="small-muted">Tip: press Start, then Stop when finished</div>
+          </div>
+        </div>
+        <div class="meta" id="runningDuration">—</div>
+      </div>
+
+      <section>
+        <h3 style="margin:8px 0 12px 0">Entries</h3>
+        <div id="entries" class="entries" aria-live="polite"></div>
+        <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end">
+          <button id="clearBtn" class="btn btn-ghost" title="Clear all entries">Clear all</button>
+        </div>
+      </section>
+    </div>
+
+    <aside class="side">
+      <div class="panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px">
+          <div>
+            <div class="small-muted">Total tracked</div>
+            <div style="font-weight:800; font-size:20px" id="totalTime">0h 0m</div>
+            <div class="quiet" id="entriesCount">0 entries</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; min-width:80px">
+            <button id="resumeBtn" class="btn btn-ghost" title="Resume last task">Resume</button>
+            <button id="removeFinishedBtn" class="btn btn-ghost" title="Remove finished entries">Remove finished</button>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="v" id="todayHours">0h</div>
+            <div class="label">Today</div>
+          </div>
+          <div class="stat">
+            <div class="v" id="longestTask">—</div>
+            <div class="label">Longest</div>
+          </div>
+        </div>
+
+        <div style="margin-top:8px; color:var(--muted); font-size:13px">
+          Entries are stored locally in your browser. Use Export to save a CSV.
+        </div>
+      </div>
+    </aside>
+  </div>
+
+<script>
+/* --- data & helpers --- */
+const LS_KEY = 'timelogger.entries.v1'
+let entries = JSON.parse(localStorage.getItem(LS_KEY) || '[]') // {id,task,start,end}
+let tickInterval = null
+
+const el = sel => document.querySelector(sel)
+const taskInput = el('#taskInput')
+const startBtn = el('#startBtn')
+const stopBtn = el('#stopBtn')
+const exportBtn = el('#exportBtn')
+const entriesRoot = el('#entries')
+const activeArea = el('#activeArea')
+const runningDuration = el('#runningDuration')
+const totalTimeEl = el('#totalTime')
+const entriesCountEl = el('#entriesCount')
+const todayHoursEl = el('#todayHours')
+const longestTaskEl = el('#longestTask')
+const clearBtn = el('#clearBtn')
+const resumeBtn = el('#resumeBtn')
+const removeFinishedBtn = el('#removeFinishedBtn')
+
+function save(){
+  localStorage.setItem(LS_KEY, JSON.stringify(entries))
+  render()
+}
+
+function humanTime(ts){
+  return new Date(ts).toLocaleString()
+}
+function msToHms(ms){
+  if(ms == null || isNaN(ms)) return '--'
+  const sec = Math.floor(ms/1000)
+  const hrs = Math.floor(sec/3600)
+  const mins = Math.floor((sec%3600)/60)
+  const s = sec%60
+  if(hrs>0) return `${hrs}h ${mins}m`
+  if(mins>0) return `${mins}m ${s}s`
+  return `${s}s`
+}
+function msToHPrecise(ms){
+  const sec = Math.floor(ms/1000)
+  const hrs = Math.floor(sec/3600)
+  const mins = Math.floor((sec%3600)/60)
+  return `${hrs}h ${mins}m`
+}
+function runningEntry(){ return entries.find(e => !e.end) || null }
+
+/* --- render logic --- */
+function render(){
+  const active = runningEntry()
+  if(active){
+    activeArea.querySelector('.task-badge').textContent = active.task
+    activeArea.querySelector('.meta').textContent = 'started: ' + humanTime(active.start)
+    stopBtn.disabled = false
+    startBtn.disabled = true
+  } else {
+    activeArea.querySelector('.task-badge').textContent = 'No active task'
+    activeArea.querySelector('.meta').textContent = 'Start a task to begin'
+    stopBtn.disabled = true
+    startBtn.disabled = false
+    runningDuration.textContent = '—'
+  }
+
+  // entries list (most recent first)
+  entriesRoot.innerHTML = entries.slice().reverse().map(e=>{
+    const dur = e.end ? msToHms(e.end - e.start) : msToHms(Date.now() - e.start)
+    const start = humanTime(e.start)
+    const end = e.end ? humanTime(e.end) : '-'
+    return `
+      <div class="entry" data-id="${e.id}">
+        <div class="left">
+          <div class="taskname">${escapeHtml(e.task)}</div>
+          <div class="times"><span>${start}</span> · <span>${end}</span></div>
+        </div>
+        <div class="dur">${dur}</div>
+        <div class="actions">
+          <button class="btn btn-ghost btn-resume" title="Resume this task">Resume</button>
+          <button class="btn btn-ghost btn-del" title="Delete entry">Delete</button>
+        </div>
+      </div>
+    `
+  }).join('')
+
+  // totals
+  const finished = entries.filter(e => e.end).map(e => e.end - e.start).reduce((a,b)=>a+b,0)
+  const running = entries.filter(e => !e.end).reduce((a,e)=>a + (Date.now()-e.start),0)
+  totalTimeEl.textContent = msToHPrecise(finished + running)
+  entriesCountEl.textContent = `${entries.length} entries`
+
+  // today
+  const startOfDay = new Date(); startOfDay.setHours(0,0,0,0); const sod = +startOfDay
+  const todayMs = entries.reduce((acc,e)=>{
+    const s = Math.max(e.start, sod)
+    const t = e.end || Date.now()
+    return acc + Math.max(0, t - s)
+  },0)
+  todayHoursEl.textContent = msToHPrecise(todayMs)
+
+  // longest single finished
+  const longest = entries.filter(e=>e.end).map(e=>e.end - e.start).sort((a,b)=>b-a)[0] || 0
+  longestTaskEl.textContent = longest ? msToHPrecise(longest) : '—'
+
+  // wire up entry buttons
+  entriesRoot.querySelectorAll('.entry').forEach(node=>{
+    const id = node.dataset.id
+    node.querySelector('.btn-del')?.addEventListener('click', ()=> {
+      entries = entries.filter(x=>x.id !== id); save()
+    })
+    node.querySelector('.btn-resume')?.addEventListener('click', ()=> {
+      const e = entries.find(x => x.id===id)
+      if(!e) return
+      if(entries.find(x=>!x.end)) return alert('Stop the active task first')
+      // Create a new entry with same task name
+      entries.push({ id: Date.now().toString(36), task: e.task + ' (resume)', start: Date.now(), end: null })
+      save()
+    })
+  })
+}
+
+/* --- actions --- */
+startBtn.addEventListener('click', ()=>{
+  const task = (taskInput.value || 'Untitled').trim()
+  if(!task) return alert('Enter a task name')
+  if(entries.find(e=>!e.end)) return alert('Stop the active task first')
+  const entry = { id: Date.now().toString(36), task, start: Date.now(), end: null }
+  entries.push(entry)
+  taskInput.value = ''
+  save()
+})
+
+stopBtn.addEventListener('click', ()=>{
+  const active = entries.find(e=>!e.end)
+  if(!active) return
+  active.end = Date.now()
+  save()
+})
+
+exportBtn.addEventListener('click', ()=>{
+  const rows = [['task','start','end','duration_ms']]
+  entries.forEach(e=>{
+    rows.push([e.task, new Date(e.start).toISOString(), e.end ? new Date(e.end).toISOString() : '', e.end ? (e.end - e.start) : (Date.now() - e.start)])
+  })
+  const csv = rows.map(r => r.map(c=> `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
+  const blob = new Blob([csv], {type:'text/csv'})
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href=url; a.download='timelogger.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url)
+})
+
+clearBtn.addEventListener('click', ()=>{
+  if(!confirm('Clear ALL entries? This cannot be undone locally.')) return
+  entries = []
+  save()
+})
+
+resumeBtn.addEventListener('click', ()=>{
+  // resume last finished entry
+  const last = entries.slice().reverse().find(e=>e.end)
+  if(!last) return alert('No finished entry to resume')
+  if(entries.find(e=>!e.end)) return alert('Stop the active task first')
+  entries.push({ id: Date.now().toString(36), task: last.task + ' (resume)', start: Date.now(), end: null })
+  save()
+})
+
+removeFinishedBtn.addEventListener('click', ()=>{
+  entries = entries.filter(e => !e.end)
+  save()
+})
+
+/* live ticking for running timer(s) */
+function startTicker(){
+  if(tickInterval) return
+  tickInterval = setInterval(()=>{
+    const active = runningEntry()
+    if(active){
+      runningDuration.textContent = msToHms(Date.now() - active.start)
+    } else {
+      runningDuration.textContent = '—'
+    }
+    // also refresh list durations & totals frequently
+    render()
+  }, 1000)
+}
+function stopTicker(){
+  if(tickInterval){ clearInterval(tickInterval); tickInterval = null }
+}
+
+/* init */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]) }
+
+render()
+startTicker()
+
+// save on unload (redundant but helpful)
+window.addEventListener('beforeunload', ()=> localStorage.setItem(LS_KEY, JSON.stringify(entries)))
+</script>
+</body>
+</html>
